@@ -51,7 +51,7 @@ def create_s3_bucket(session, configs, UNIQUE_ID, cleanup_info):
 def run_remote_instance(session, configs, cleanup_info):
     ec2 = session.resource('ec2', region_name=configs['basic_config']['configure']['region'])
     sshkey_path = configs['basic_config']['remote']['ssh_key_file']
-    sshkey_name = sshkey_path.split('.')[0]
+    sshkey_name = sshkey_path.split('/')[-1].split('.')[0]
     instance = ec2.create_instances(
         ImageId=configs['basic_config']['remote']['image_id'],
         MinCount=1,
@@ -179,6 +179,7 @@ def main(argv):
                 None
             )
 
+
             # Create an SQS request queue.
             sqs = session.resource('sqs')
             sqs.create_queue(QueueName=configs['basic_config']['sqs']['name'],
@@ -186,15 +187,28 @@ def main(argv):
 
             cleanup_info['sqs_name'] = configs['basic_config']['sqs']['name']
             logging.info('successfully created sqs')
-
+            
             # Create two S3 buckets: one for input, one for output.
             s3_bucket_input, s3_bucket_output = create_s3_bucket(session, configs, UNIQUE_ID, cleanup_info)
             logging.info('successfully created s3 bucket')
 
 
-            # Create ec2 instances for client, watchdog and server
-            #TODO create security group, rather then using the created one
-            
+            # create security group, allow inbound http, ssh
+            ec2 = session.resource('ec2', region_name=configs['basic_config']['configure']['region'])
+
+            security_group = ec2.create_security_group(\
+                GroupName=configs['basic_config']['security_group']['name'],
+                Description=configs['basic_config']['security_group']['description'])
+
+            cleanup_info['security_group_id'] = security_group.id
+            auth_ssh_response = security_group.authorize_ingress(IpProtocol="tcp",
+                                    CidrIp="0.0.0.0/0",FromPort=22,ToPort=22)
+
+            auth_http_response = security_group.authorize_ingress(IpProtocol="tcp",
+                                    CidrIp="0.0.0.0/0",FromPort=80,ToPort=80)
+
+            logging.info('successfully create security group, allow ssh and http')
+
 
             # create ec2 instance
             instance = run_remote_instance(session, configs, cleanup_info)

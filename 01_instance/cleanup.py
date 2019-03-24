@@ -6,6 +6,8 @@ import re
 import boto3
 import argparse
 import logging
+from botocore.exceptions import ClientError
+
 
 from config import Config
 
@@ -42,6 +44,19 @@ def cleanup_ec2_instance(cleanup_info):
         print(e)
 
 
+def cleanup_sg(cleanup_info):
+    if 'security_group_id' not in cleanup_info:
+        return
+
+    ec2 = boto3.client('ec2')
+    try:
+        # delete security group by id
+        response = ec2.delete_security_group(GroupId=cleanup_info['security_group_id'])
+    except ClientError as e:
+        print(e)
+
+
+
 def main(argv):
     # Parse argument
     parser = argparse.ArgumentParser()
@@ -62,10 +77,10 @@ def main(argv):
             cleanup_info = cfg.load()
 
             # executing cleanup procedure
+            cleanup_ec2_instance(cleanup_info)
             cleanup_sqs(cleanup_info)
             cleanup_s3(cleanup_info)
-            cleanup_ec2_instance(cleanup_info)
-
+            cleanup_sg(cleanup_info)
 
             os.system('rm %s' % (cleanup_info['remote_deploy_file']))
             # delete cleanup_info file
