@@ -12,13 +12,43 @@ from botocore.exceptions import ClientError
 
 from config import Config
 
+def cleanup_sqs(cleanup_info):
+    try:
+        sqs_client = boto3.client('sqs')
+        sqs_resource = boto3.resource('sqs')
+        sqs_q = sqs_resource.get_queue_by_name(QueueName=cleanup_info['sqs_name'])
+        sqs_client.delete_queue(QueueUrl=sqs_q.url)
+    except Exception as e:
+        print(e)
 
+def cleanup_s3(cleanup_info):
+    try:
+        s3 = boto3.resource('s3')
+        bucket = s3.Bucket(cleanup_info['input_bucket_name'])
+        bucket.objects.all().delete()
+        bucket.delete()
+
+        bucket = s3.Bucket(cleanup_info['output_bucket_name'])
+        bucket.objects.all().delete()
+        bucket.delete()
+    except Exception as e:
+        print(e)
 
 def cleanup_ec2_instance(cleanup_info):
     try:
-        if 'instance_id' in cleanup_info:
+        if 'client_instance_id' in cleanup_info:
             ec2 = boto3.resource('ec2')
-            instance = ec2.Instance(cleanup_info['instance_id'])
+            instance = ec2.Instance(cleanup_info['client_instance_id'])
+            instance.terminate()
+
+        if 'service_instance_id' in cleanup_info:
+            ec2 = boto3.resource('ec2')
+            instance = ec2.Instance(cleanup_info['service_instance_id'])
+            instance.terminate()
+
+        if 'watchdog_instance_id' in cleanup_info:
+            ec2 = boto3.resource('ec2')
+            instance = ec2.Instance(cleanup_info['watchdog_instance_id'])
             instance.terminate()
     except Exception as e:
         print(e)
@@ -58,11 +88,19 @@ def main(argv):
 
             # executing cleanup procedure
             cleanup_ec2_instance(cleanup_info)
+            cleanup_sqs(cleanup_info)
+            cleanup_s3(cleanup_info)
 
             time.sleep(60) # Wait for ec2 instance to shutdown
             cleanup_sg(cleanup_info)
 
-            os.system('rm %s' % (cleanup_info['remote_deploy_file']))
+            os.system('rm %s' % (cleanup_info['client_deploy_file']))
+            os.system('rm %s' % (cleanup_info['service_deploy_file']))
+            os.system('rm %s' % (cleanup_info['watchdog_deploy_file']))
+
+            # delete remove_config file
+            os.system('rm %s' % (cleanup_info['remote_config']))
+            
             # delete cleanup_info file
             os.system('rm %s' % (options.cleanup))
             

@@ -1,0 +1,41 @@
+{
+    "server_config":{},
+    "watchdog_config":{},
+    "client_config":{},
+
+    "basic_config":{
+        "configure":{
+            "access_key_id": "PYR*************KSML",
+            "secret_access_key": "vPQv*******************************Se/k/",
+            "region": "ap-southeast-2",
+            "format": "json"
+        },
+        "local": {
+            "logging_filename": "cloud_logging.log"
+        },
+        "remote":{
+            "username": "ubuntu",
+            "ssh_key_file": "key.pem",
+	        "image_id": "ami-0789a5fb42dcccc10",
+            "instance_type": "t2.micro",
+
+            "ssh_wait_time": "60", 
+            "deploy_directory": "remote",
+            "deploy_file": "remote.tar.gz",
+
+	    "execution_interval": "30"
+        },
+        "security_group":{
+            "name": "cloud_security_group",
+            "description": "cloud_security_group"
+        },
+        "sqs":{
+            "name":"cloud_queue",
+            "visibility_timeout": "60"
+        },
+        "s3_bucket":{
+            "input_bucket_name": "cloud.input",
+            "output_bucket_name": "cloud.output"
+        }
+    }
+}

@@ -8,44 +8,11 @@ import time
 import getopt
 import argparse
 import json
-import uuid
 import boto3
 import paramiko
 
 from config import Config
 
-
-
-def create_s3_bucket(session, configs, UNIQUE_ID, cleanup_info):
-    s3 = session.resource('s3')
-
-    inBucketName = configs['basic_config']['s3_bucket']['input_bucket_name'] + '.' + UNIQUE_ID
-    outBucketName = configs['basic_config']['s3_bucket']['output_bucket_name'] + '.' + UNIQUE_ID
-
-    response1 = s3.create_bucket(Bucket=inBucketName,
-        CreateBucketConfiguration={'LocationConstraint': configs['basic_config']['configure']['region']})
-    response2 = s3.create_bucket(Bucket=outBucketName,
-        CreateBucketConfiguration={'LocationConstraint': configs['basic_config']['configure']['region']})
-
-    try:
-        s3.meta.client.head_bucket(Bucket=inBucketName)
-        s3.meta.client.head_bucket(Bucket=outBucketName)
-    except botocore.exceptions.ClientError as e:
-        # If a client error is thrown, then check that it was a 404 error.
-        # If it was a 404 error, then the bucket does not exist.
-        error_code = int(e.response['Error']['Code'])
-        if error_code == 404:
-            # TODO: update the bucket name and try to create bucket again
-            print('FAIL TO CREATE S3 BUCKET!')
-            sys.exit()
-
-    cleanup_info['input_bucket_name'] = inBucketName
-    cleanup_info['output_bucket_name'] = outBucketName
-
-    input_bucket = s3.Bucket(inBucketName)
-    output_bucket = s3.Bucket(outBucketName)
-
-    return input_bucket, output_bucket
 
 
 def run_remote_instance(session, configs, cleanup_info):
@@ -167,9 +134,6 @@ def main(argv):
             # container for cleanup info
             cleanup_info = {}
 
-            # generate unique id
-            UNIQUE_ID = str(uuid.uuid4())
-
             # create aws session
             session = boto3.session.Session(
                 configs["basic_config"]["configure"]["access_key_id"],
@@ -178,19 +142,6 @@ def main(argv):
                 configs["basic_config"]["configure"]["region"],
                 None
             )
-
-
-            # Create an SQS request queue.
-            sqs = session.resource('sqs')
-            sqs.create_queue(QueueName=configs['basic_config']['sqs']['name'],
-                Attributes={'VisibilityTimeout': configs['basic_config']['sqs']['visibility_timeout']})
-
-            cleanup_info['sqs_name'] = configs['basic_config']['sqs']['name']
-            logging.info('successfully created sqs')
-            
-            # Create two S3 buckets: one for input, one for output.
-            s3_bucket_input, s3_bucket_output = create_s3_bucket(session, configs, UNIQUE_ID, cleanup_info)
-            logging.info('successfully created s3 bucket')
 
 
             # create security group, allow inbound http, ssh
