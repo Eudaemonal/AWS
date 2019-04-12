@@ -10,22 +10,24 @@ import subprocess
 import json
 
 
-if __name__ == '__main__':
+
+
+def main(argv):
     config_file = 'remote_config.json'
 
     with open(config_file) as f:
-        config = json.load(f)
+        configs = json.load(f)
 
     session = boto3.session.Session(
-        config['access_key_id'],
-        config['secret_access_key'],
+        configs['access_key_id'],
+        configs['secret_access_key'],
         None,
-        config['region'],
+        configs['region'],
         None
     )
 
     sqs = session.resource('sqs')
-    queue = sqs.get_queue_by_name(QueueName=config['sqs_name'])
+    queue = sqs.get_queue_by_name(QueueName=configs['sqs_name'])
 
     # process the first message in queue
     response = queue.receive_messages(MaxNumberOfMessages=1)
@@ -101,3 +103,6 @@ if __name__ == '__main__':
     except FileNotFoundError:
         pass
 
+
+if __name__ == '__main__':
+    main(sys.argv)

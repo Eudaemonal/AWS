@@ -25,7 +25,7 @@ def create_message(prefix, filename):
     return message_body
 
 
-def monitor(path, prefix, queue, inputb):
+def monitor(path, queue, inputb):
     i = inotify.adapters.Inotify()
 
     i.add_watch(path)
@@ -36,11 +36,12 @@ def monitor(path, prefix, queue, inputb):
      
             #print("WD=(%d) MASK=(%d) COOKIE=(%d) LEN=(%d) MASK->NAMES=%s WATCH-PATH=[%s] FILENAME=[%s]"%(header.wd, header.mask, header.cookie, header.len, type_names, watch_path, filename))
             if(type_names[0] == 'IN_MOVED_TO'):
-                process_file(filename, path, prefix, queue, inputb)
+                process_file(filename, path, queue, inputb)
 
 
 
-def process_file(filename, path, prefix, queue, inputb):
+def process_file(filename, path, queue, inputb):
+    prefix = str(uuid.uuid1())
     message = create_message(prefix, filename)
     # Send sqs message for processing
     response = queue.send_message(MessageBody=message)
@@ -76,10 +77,8 @@ if __name__ == '__main__':
     s3 = session.resource('s3')
     inputb = s3.Bucket(config['s3_input_bucket_name'])
 
-    prefix = str(uuid.uuid1())
 
-
-    monitor(directory, prefix, queue, inputb)
+    monitor(directory, queue, inputb)
 
 
 

@@ -65,7 +65,6 @@ def generate_remote_config(configs, cleanup_info):
     remote_config['s3_input_bucket_name'] = configs['basic_config']['s3_bucket']['input_bucket_name']
     remote_config['s3_output_bucket_name'] = configs['basic_config']['s3_bucket']['output_bucket_name']
 
-
     with open('remote_config.json', 'w') as outfile:
         json.dump(remote_config, outfile)
 
@@ -160,9 +159,9 @@ def main(argv):
             service_instance = ServiceInstance(session, configs)
             watchdog_instance = WatchdogInstance(session, configs)
 
-            client_instance.run(cleanup_info)
-            service_instance.run(cleanup_info)
-            watchdog_instance.run(cleanup_info)
+            client_public_dns = client_instance.run(cleanup_info)
+            service_public_dns = service_instance.run(cleanup_info)
+            watchdog_public_dns = watchdog_instance.run(cleanup_info)
 
             time.sleep(int(configs['basic_config']['remote']['ssh_wait_time']))
 
@@ -170,12 +169,34 @@ def main(argv):
             service_instance.config()
             watchdog_instance.config()
 
+            # create ami for service instance
+            service_image_id = service_instance.create_image(configs['service_config']['image_name'])
+
+            cleanup_info['service_image_id'] = service_image_id
+            logging.info('create AMI of first service instance successfully')
+
+
+            # transmit configs to watchdog
+            remote_config['private_key_path']
+            remote_config['original_service_instance_id']
+            remote_config['security_group_id']
+            remote_config['service_image_id']
+            remote_config['instance_type']
+
+            os.system("scp -i %s %s ubuntu@%s:~/ >/dev/null 2>&1" % (configs['basic_config']['remote']['ssh_key_file'],
+                "%s"%("cleanup_info.json"),
+                watchdog_public_dns))
+
+
             # store the json cleanup_info
             with open('cleanup_info.json', 'w') as outfile:
                 json.dump(cleanup_info, outfile)
             print('Remote setup succeeded:')
             print(cleanup_info)
 
+            print("client: " + client_public_dns)
+            print("service: " + service_public_dns)
+            print("watchdog: " + watchdog_public_dns)
 
 
         except Exception as e:

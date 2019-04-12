@@ -30,7 +30,7 @@ class Instance:
         ec2 = self.session.resource('ec2', region_name=self.region)
         sshkey_path = self.ssh_key_file
         sshkey_name = sshkey_path.split('/')[-1].split('.')[0]
-        instance = ec2.create_instances(
+        self.instance = ec2.create_instances(
             ImageId=self.image_id,
             MinCount=1,
             MaxCount=1,
@@ -39,16 +39,16 @@ class Instance:
             SecurityGroups=[self.security_group]
         )[0]
 
-        instance.wait_until_running()
-        instance.load()
+        self.instance.wait_until_running()
+        self.instance.load()
 
-        self.public_dns_name = instance.public_dns_name
+        self.public_dns_name = self.instance.public_dns_name
 
-        cleanup_info['instance_id'] = instance.instance_id
+        cleanup_info['instance_id'] = self.instance.instance_id
         cleanup_info['remote_deploy_file'] = self.deploy_file
         logging.info('successfully launch ec2 instance')
 
-        return instance
+        return self.public_dns_name
 
     def config(self):
         # configure the ec2 instance
@@ -111,6 +111,13 @@ class Instance:
             print(e)
             sys.exit()
 
+    def create_image(self, name):
+        image = self.instance.create_image(Name=name)
+        image.wait_until_exists()
+
+        return image.id
+
+
 
 class ClientInstance(Instance):
     def __init__(self, session, configs):
@@ -123,8 +130,8 @@ class ClientInstance(Instance):
         self.ssh_wait_time = configs['basic_config']['remote']['ssh_wait_time']
         self.remote_username = configs['basic_config']['remote']['username']
 
-        self.deploy_file = configs['basic_config']['remote']['client_deploy_file']
-        self.deploy_directory = configs['basic_config']['remote']['client_deploy_directory']
+        self.deploy_file = configs['client_config']['deploy_file']
+        self.deploy_directory = configs['client_config']['deploy_directory']
 
         self.corn_execution_interval = configs['basic_config']['remote']['execution_interval']
 
@@ -132,7 +139,7 @@ class ClientInstance(Instance):
         ec2 = self.session.resource('ec2', region_name=self.region)
         sshkey_path = self.ssh_key_file
         sshkey_name = sshkey_path.split('/')[-1].split('.')[0]
-        instance = ec2.create_instances(
+        self.instance = ec2.create_instances(
             ImageId=self.image_id,
             MinCount=1,
             MaxCount=1,
@@ -141,16 +148,16 @@ class ClientInstance(Instance):
             SecurityGroups=[self.security_group]
         )[0]
 
-        instance.wait_until_running()
-        instance.load()
+        self.instance.wait_until_running()
+        self.instance.load()
 
-        self.public_dns_name = instance.public_dns_name
+        self.public_dns_name = self.instance.public_dns_name
 
-        cleanup_info['client_instance_id'] = instance.instance_id
+        cleanup_info['client_instance_id'] = self.instance.instance_id
         cleanup_info['client_deploy_file'] = self.deploy_file
         logging.info('successfully launch client instance')
 
-        return instance
+        return self.public_dns_name
 
 
 
@@ -165,8 +172,8 @@ class ServiceInstance(Instance):
         self.ssh_wait_time = configs['basic_config']['remote']['ssh_wait_time']
         self.remote_username = configs['basic_config']['remote']['username']
 
-        self.deploy_file = configs['basic_config']['remote']['service_deploy_file']
-        self.deploy_directory = configs['basic_config']['remote']['service_deploy_directory']
+        self.deploy_file = configs['service_config']['deploy_file']
+        self.deploy_directory = configs['service_config']['deploy_directory']
 
         self.corn_execution_interval = configs['basic_config']['remote']['execution_interval']
 
@@ -174,7 +181,7 @@ class ServiceInstance(Instance):
         ec2 = self.session.resource('ec2', region_name=self.region)
         sshkey_path = self.ssh_key_file
         sshkey_name = sshkey_path.split('/')[-1].split('.')[0]
-        instance = ec2.create_instances(
+        self.instance = ec2.create_instances(
             ImageId=self.image_id,
             MinCount=1,
             MaxCount=1,
@@ -183,16 +190,18 @@ class ServiceInstance(Instance):
             SecurityGroups=[self.security_group]
         )[0]
 
-        instance.wait_until_running()
-        instance.load()
+        self.instance.wait_until_running()
+        self.instance.load()
 
-        self.public_dns_name = instance.public_dns_name
+        self.public_dns_name = self.instance.public_dns_name
 
-        cleanup_info['service_instance_id'] = instance.instance_id
+        cleanup_info['service_instance_id'] = self.instance.instance_id
         cleanup_info['service_deploy_file'] = self.deploy_file
         logging.info('successfully launch service instance')
 
-        return instance
+        return self.public_dns_name
+
+
 
 
 
@@ -207,8 +216,8 @@ class WatchdogInstance(Instance):
         self.ssh_wait_time = configs['basic_config']['remote']['ssh_wait_time']
         self.remote_username = configs['basic_config']['remote']['username']
 
-        self.deploy_file = configs['basic_config']['remote']['watchdog_deploy_file']
-        self.deploy_directory = configs['basic_config']['remote']['watchdog_deploy_directory']
+        self.deploy_file = configs['watchdog_config']['deploy_file']
+        self.deploy_directory = configs['watchdog_config']['deploy_directory']
 
         self.corn_execution_interval = configs['basic_config']['remote']['execution_interval']
 
@@ -216,7 +225,7 @@ class WatchdogInstance(Instance):
         ec2 = self.session.resource('ec2', region_name=self.region)
         sshkey_path = self.ssh_key_file
         sshkey_name = sshkey_path.split('/')[-1].split('.')[0]
-        instance = ec2.create_instances(
+        self.instance = ec2.create_instances(
             ImageId=self.image_id,
             MinCount=1,
             MaxCount=1,
@@ -225,15 +234,15 @@ class WatchdogInstance(Instance):
             SecurityGroups=[self.security_group]
         )[0]
 
-        instance.wait_until_running()
-        instance.load()
+        self.instance.wait_until_running()
+        self.instance.load()
 
-        self.public_dns_name = instance.public_dns_name
+        self.public_dns_name = self.instance.public_dns_name
 
-        cleanup_info['watchdog_instance_id'] = instance.instance_id
+        cleanup_info['watchdog_instance_id'] = self.instance.instance_id
         cleanup_info['watchdog_deploy_file'] = self.deploy_file
         logging.info('successfully launch watchdog instance')
 
-        return instance
+        return self.public_dns_name
 
 
