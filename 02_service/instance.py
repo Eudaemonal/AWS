@@ -202,9 +202,6 @@ class ServiceInstance(Instance):
         return self.public_dns_name
 
 
-
-
-
 class WatchdogInstance(Instance):
     def __init__(self, session, configs):
         self.session = session

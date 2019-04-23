@@ -29,12 +29,12 @@ class WatchDog:
         return q_len
 
 
-    '''
+    
     def get_all_server_instance(self):
         ec2_resource = boto3.resource('ec2')
         ami_filter = {
             'Name': 'image-id',
-            'Values': [self.configs['universal_image_id']]
+            'Values': [self.configs['service_image_id']]
         }
         init_server_filter = {
             'Name': 'instance-id',
@@ -45,7 +45,6 @@ class WatchDog:
 
         server_instances = ami_server_instances + init_server_instance
         return server_instances
-    '''
 
 
     def get_running_instances(self, server_instances=None):
@@ -63,7 +62,7 @@ class WatchDog:
         to_destroy_instance.terminate()
 
     def create_one_instance(self):
-        key_path = self.configs['private_key_path']
+        key_path = self.configs['ssh_key_file']
         key_name = os.path.splitext(key_path.split('/')[-1])[0]
 
         sec_grp_id = self.configs['security_group_id']
@@ -148,17 +147,17 @@ class WatchDog:
         server_instances = self.get_running_instances()
         total_cpu_avg, q_len = self.get_status(display=False)
 
-        num_instances_there_should_be_by_q_len = ((q_len/int(self.configs['watchdog_config']['unit_queue_len'])) * int(\
-            self.configs['watchdog_config']['num_server_neeeded_per_uql_request'])) + 1
+        num_instances_there_should_be_by_q_len = ((q_len/int(self.configs['unit_queue_len'])) * int(\
+            self.configs['num_server_neeeded_per_uql_request'])) + 1
 
         if num_instances_there_should_be_by_q_len != len(server_instances):
             self.scale_to(num_instances_there_should_be_by_q_len)
 
         # optional: auxiliary monitoring strategy
-        if total_cpu_avg < float(self.configs['watchdog_config']['cpu_avg_usage_lower_bound']):
+        if total_cpu_avg < float(self.configs['cpu_avg_usage_lower_bound']):
             # scale in
             pass
-        elif total_cpu_avg > float(self.configs['watchdog_config']['cpu_avg_usage_higher_bound']):
+        elif total_cpu_avg > float(self.configs['cpu_avg_usage_higher_bound']):
             # scale out
             pass
         else:
@@ -177,6 +176,8 @@ def read_config(config_file):
     configs = json.load(config_json)
 
     return configs
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -199,14 +200,6 @@ if __name__ == '__main__':
 
     wd = WatchDog(session, configs)
 
-
-
-    # used as debug output
-    if wd.configs['overall_config']['logging_level'] == 'disable':
-        logging.disable(logging.ERROR)
-    else:
-        logging.basicConfig(level=int(wd.configs['overall_config']['logging_level']),
-            format='%(asctime)s - %(levelname)s - %(message)s')
 
     if args.status:
         logging.info('get status')

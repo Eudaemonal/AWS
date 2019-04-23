@@ -65,6 +65,22 @@ def cleanup_sg(cleanup_info):
     except ClientError as e:
         print(e)
 
+def cleanup_ami(cleanup_info):
+    if 'service_image_id' not in cleanup_info:
+        return
+
+    try:
+        ec2 = boto3.resource('ec2')
+        ec2_client = boto3.client('ec2')
+        image = ec2.Image(cleanup_info['service_image_id'])
+        resp = ec2_client.describe_images(ImageIds=[image.id])
+        snapshot_id = resp['Images'][0]['BlockDeviceMappings'][0]['Ebs']['SnapshotId'] # is string
+        snapshot = ec2.Snapshot(snapshot_id)
+        image.deregister()
+        snapshot.delete()
+
+    except Exception as e:
+        print(e)
 
 
 def main(argv):
@@ -93,6 +109,7 @@ def main(argv):
 
             time.sleep(60) # Wait for ec2 instance to shutdown
             cleanup_sg(cleanup_info)
+            cleanup_ami(cleanup_info)
 
             os.system('rm %s' % (cleanup_info['client_deploy_file']))
             os.system('rm %s' % (cleanup_info['service_deploy_file']))
@@ -103,6 +120,8 @@ def main(argv):
             
             # delete cleanup_info file
             os.system('rm %s' % (options.cleanup))
+
+            print("cleanup succeeded")
             
         except Exception as e:
             logging.error(str(e))

@@ -49,12 +49,7 @@ def create_s3_bucket(session, configs, cleanup_info):
 
 
 
-def generate_remote_config(configs, cleanup_info):
-    client_directory = configs['basic_config']['remote']['client_deploy_directory']
-    service_directory = configs['basic_config']['remote']['service_deploy_directory']
-    watchdog_directory = configs['basic_config']['remote']['watchdog_deploy_directory']
-
-
+def generate_remote_config(configs):
     # store the config for remote 
     remote_config = {}
     remote_config['access_key_id'] = configs["basic_config"]["configure"]["access_key_id"]
@@ -65,14 +60,20 @@ def generate_remote_config(configs, cleanup_info):
     remote_config['s3_input_bucket_name'] = configs['basic_config']['s3_bucket']['input_bucket_name']
     remote_config['s3_output_bucket_name'] = configs['basic_config']['s3_bucket']['output_bucket_name']
 
+    return remote_config
+
+def transmit_remote_config(configs, remote_config, public_dns, cleanup_info):
     with open('remote_config.json', 'w') as outfile:
         json.dump(remote_config, outfile)
 
-    os.system("cp remote_config.json "+client_directory)
-    os.system("cp remote_config.json "+service_directory)
-    os.system("cp remote_config.json "+watchdog_directory)
+    os.system("scp -o 'StrictHostKeyChecking no' -i %s remote_config.json %s@%s:~/ > /dev/null 2>&1" % 
+        (configs['basic_config']['remote']['ssh_key_file'],
+        configs['basic_config']['remote']['username'],
+        public_dns))
 
     cleanup_info['remote_config'] = 'remote_config.json'
+
+
 
 def main(argv):
     # Parse argument
@@ -147,12 +148,7 @@ def main(argv):
             # TODO port for testing, remove
             auth_http_response = security_group.authorize_ingress(IpProtocol="tcp",
                                     CidrIp="0.0.0.0/0",FromPort=80,ToPort=8080)
-
-
             logging.info('successfully create security group, allow ssh and http')
-
-
-            generate_remote_config(configs, cleanup_info)
 
             # create ec2 instances
             client_instance = ClientInstance(session, configs)
@@ -165,9 +161,12 @@ def main(argv):
 
             time.sleep(int(configs['basic_config']['remote']['ssh_wait_time']))
 
+            remote_config = generate_remote_config(configs)
+            transmit_remote_config(configs, remote_config, client_public_dns, cleanup_info)
+            transmit_remote_config(configs, remote_config, service_public_dns, cleanup_info)
+
             client_instance.config()
             service_instance.config()
-            watchdog_instance.config()
 
             # create ami for service instance
             service_image_id = service_instance.create_image(configs['service_config']['image_name'])
@@ -177,15 +176,19 @@ def main(argv):
 
 
             # transmit configs to watchdog
-            remote_config['private_key_path']
-            remote_config['original_service_instance_id']
-            remote_config['security_group_id']
-            remote_config['service_image_id']
-            remote_config['instance_type']
+            remote_config['ssh_key_file'] = configs['basic_config']['remote']['ssh_key_file']
+            remote_config['original_service_instance_id'] = cleanup_info['service_instance_id']
+            remote_config['security_group_id'] = cleanup_info['security_group_id']
+            remote_config['service_image_id'] = cleanup_info['service_image_id']
+            remote_config['instance_type'] = configs['basic_config']['remote']['instance_type']
 
-            os.system("scp -i %s %s ubuntu@%s:~/ >/dev/null 2>&1" % (configs['basic_config']['remote']['ssh_key_file'],
-                "%s"%("cleanup_info.json"),
-                watchdog_public_dns))
+            remote_config['unit_queue_len'] = configs['watchdog_config']['unit_queue_len']
+            remote_config['num_server_neeeded_per_uql_request'] = configs['watchdog_config']['num_server_neeeded_per_uql_request']
+            remote_config['cpu_avg_usage_lower_bound'] = configs['watchdog_config']['cpu_avg_usage_lower_bound']
+            remote_config['cpu_avg_usage_higher_bound'] = configs['watchdog_config']['cpu_avg_usage_higher_bound']
+
+            transmit_remote_config(configs, remote_config, watchdog_public_dns, cleanup_info)
+            watchdog_instance.config()
 
 
             # store the json cleanup_info
