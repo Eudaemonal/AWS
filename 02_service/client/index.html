@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload Form</title>
+</head>
+<body>
+
+<form action="/upload" enctype="multipart/form-data" method="POST">
+  <fieldset>
+    <legend>Login</legend>
+
+    <div>
+      <label for="filetoupload">File</label>
+      <input type="file" name="filetoupload" required>
+    </div>
+
+    <input type="submit" value="Upload">
+  </fieldset>
+</form>
+
+</body>
+</html>

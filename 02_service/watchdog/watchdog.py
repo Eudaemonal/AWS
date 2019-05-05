@@ -2,9 +2,7 @@
 
 import boto3
 import json
-import uuid
 import sys
-import paramiko
 import logging
 import os
 import time
