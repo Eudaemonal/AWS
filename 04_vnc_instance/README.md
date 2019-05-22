@@ -2,10 +2,8 @@
 
 Creation of AWS EC2 Instance with vncserver.
 
-List of AMI:
+Supported AMI:
 Ubuntu Server 18.04 LTS (HVM), SSD Volume Type - ami-0b76c3b150c6b1423
-Deep Learning AMI (Ubuntu) Version 23.0 - ami-0726ab58f406b644f
-
 
 ## Description
 

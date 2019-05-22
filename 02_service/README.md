@@ -30,8 +30,8 @@ Modify the ```ssh_key_file``` region in configure.json file
 4. Run the program:   
 ```python3 setup.py -c configure.json```
 
-5. Test flask server(Replace the Ip with IPv4 Public IP of your Instance):  
-```curl -GET 53.64.51.207```   
+5. Test server (Replace the Ip with IPv4 Public IP of your Instance):  
+In your web browser: ```53.64.51.207```   
 
 6. Cleanup the the resources created (Note the cleanup_info.json is created by setup.py, it will be removed after cleanup):  
 ```python3 cleanup.py -c cleanup_info.json```
