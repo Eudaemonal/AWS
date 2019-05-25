@@ -3,7 +3,7 @@
 const http = require("http")
 const url = require("url")
 const hostname = "localhost"
-const port = 8080
+const port = 80
 
 function start(route, handler) {
     http

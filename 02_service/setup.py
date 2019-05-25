@@ -145,11 +145,6 @@ def main(argv):
             auth_http_response = security_group.authorize_ingress(IpProtocol="tcp",
                                     CidrIp="0.0.0.0/0",FromPort=80,ToPort=80)
 
-            # TODO port for testing, remove
-            auth_http_response = security_group.authorize_ingress(IpProtocol="tcp",
-                                    CidrIp="0.0.0.0/0",FromPort=80,ToPort=8080)
-            logging.info('successfully create security group, allow ssh and http')
-
             # create ec2 instances
             client_instance = ClientInstance(session, configs)
             service_instance = ServiceInstance(session, configs)

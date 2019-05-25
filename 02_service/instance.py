@@ -88,12 +88,12 @@ class Instance:
             exit_status = stdout.channel.recv_exit_status()
 
             # install dependency on ec2 instance
-            install_dependency_cmd = 'sudo bash install.sh'
+            install_dependency_cmd = 'bash install.sh'
             stdin, stdout, stderr = ssh.exec_command(install_dependency_cmd)
             exit_status = stdout.channel.recv_exit_status()
 
             # setup ec2 instance and start running
-            setup_cmd = 'sudo bash setup.sh'
+            setup_cmd = 'nohup bash setup.sh &'
             stdin, stdout, stderr = ssh.exec_command(setup_cmd)
             exit_status = stdout.channel.recv_exit_status()
 
@@ -200,6 +200,62 @@ class ServiceInstance(Instance):
         logging.info('successfully launch service instance')
 
         return self.public_dns_name
+
+    def config(self):
+        # configure the ec2 instance
+        os.system("tar -zcvf %s %s > /dev/null 2>&1" % 
+                (self.deploy_file, 
+                 self.deploy_directory))
+        os.system("scp -o 'StrictHostKeyChecking no' -i %s %s %s@%s:~/ > /dev/null 2>&1" % 
+                (self.ssh_key_file,
+                self.deploy_file,
+                self.remote_username,
+                self.public_dns_name))
+        os.system("scp -o 'StrictHostKeyChecking no' -i %s %s %s@%s:~/ > /dev/null 2>&1" % 
+                (self.ssh_key_file,
+                self.ssh_key_file,
+                self.remote_username,
+                self.public_dns_name))
+        
+        # ssh to remote, run necessary setup and start cron job
+        paramiko_private_key = paramiko.RSAKey.from_private_key_file(self.ssh_key_file)
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+
+        try:
+            ssh.connect(hostname=self.public_dns_name,
+                    username=self.remote_username,
+                    pkey=paramiko_private_key)
+
+            # unzip the codes on ec2 instance
+            unzip_cmd = 'tar xvfz %s' % (self.deploy_file)
+            stdin, stdout, stderr = ssh.exec_command(unzip_cmd)
+            exit_status = stdout.channel.recv_exit_status()
+            
+            # move codes in remote folder to home directory
+            move_cmd = 'mv %s/* ~/' % (self.deploy_directory)
+            stdin, stdout, stderr = ssh.exec_command(move_cmd)
+            exit_status = stdout.channel.recv_exit_status()
+
+            # install dependency on ec2 instance
+            install_dependency_cmd = 'bash install.sh'
+            stdin, stdout, stderr = ssh.exec_command(install_dependency_cmd)
+            exit_status = stdout.channel.recv_exit_status()
+
+            # use crontab to ensure one service process running
+            cron_cmd = "echo '*/{} * * * * {}' > cronjob; crontab cronjob; rm cronjob;".format(\
+                    self.corn_execution_interval,\
+                    'pgrep -n "service.py" || /usr/bin/python3 service.py')
+            stdin, stdout, stderr = ssh.exec_command(cron_cmd)
+            exit_status = stdout.channel.recv_exit_status()
+
+            # close the connection once the job is done
+            ssh.close()
+            
+        except Exception as e:
+            print(e)
+            sys.exit()
 
 
 class WatchdogInstance(Instance):

@@ -3,6 +3,14 @@
 const fs = require('fs')
 const formidable = require('formidable')
 const util = require('util')
+const uuid = require('uuid');
+
+
+var upload_path = "uploaded/"
+var download_path = "download/"
+var oldpath = ""
+var newpath = ""
+var outpath = ""
 
 function start(request, response) {
     console.log('Request handler start was called')
@@ -13,13 +21,13 @@ function start(request, response) {
 function upload(request, response) {
     console.log('Request handler upload was called')
 
-    var upload_path = "uploaded/"
-    var oldpath = ""
-    var newpath = ""
     var form = new formidable.IncomingForm()
     form.parse(request, function (error, fields, files) {
         oldpath = files.filetoupload.path
-        newpath = upload_path + "file.pdf"
+        var uid = uuid.v1();
+
+        newpath = upload_path + uid + ".pdf"
+        outpath = download_path + uid + ".zip"
         // copy the file to a new location
         fs.rename(oldpath, newpath, function (err) {
             if (err) throw err
@@ -27,10 +35,10 @@ function upload(request, response) {
     });
 
     let fileName = "./download.html"
-    downloadHTML(response, fileName, newpath)
+    downloadHTML(response, fileName)
 }
 
-function downloadHTML(response, fileName, downloadpath) {
+function downloadHTML(response, fileName) {
     fs.readFile(fileName, 'utf8', function onReturn(error, data) {
         if(error) throw error
         response.statusCode = 200
@@ -43,8 +51,8 @@ function downloadHTML(response, fileName, downloadpath) {
 function download(request, response) {
     console.log('Request handler download was called')
 
-    response.setHeader('Content-Type', 'application/pdf')
-    fs.createReadStream("./uploaded/file.pdf").pipe(response)
+    response.setHeader('Content-Type', 'application/zip')
+    fs.createReadStream(outpath).pipe(response)
 }
 
 function responseHTML(response, fileName) {

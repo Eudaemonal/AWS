@@ -15,7 +15,7 @@ def merge(input_path, output_path):
 
 # Accepts one pdf file, split it by each page, output as zip
 def split(input_path, output_path):
-    path = 'output'
+    path = 'proc_output'
     inputpdf = PdfFileReader(open(input_path, "rb"))
     outputzip = zipfile.ZipFile(output_path, 'w')
 

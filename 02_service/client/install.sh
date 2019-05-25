@@ -6,4 +6,4 @@ pip3 install boto3
 pip3 install uuid
 pip3 install inotify
 
-npm install
+sudo npm install
